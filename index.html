@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Yearbook — Class Memories</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Jost:wght@300;400;500;600&family=Pinyon+Script&display=swap" rel="stylesheet" />
+
+  <!-- EmailJS SDK (for OTP emails) -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- =============================================
+       SCREEN: LANDING (shown when not logged in)
+  ============================================== -->
+  <div id="screen-landing" class="screen active">
+
+    <!-- Decorative background texture -->
+    <div class="landing-bg"></div>
+
+    <div class="landing-center">
+      <div class="landing-logo">
+        <span class="logo-script">The Yearbook</span>
+        <span class="logo-year" id="landing-year"></span>
+      </div>
+      <p class="landing-tagline">Where class memories live forever.</p>
+
+      <div class="landing-actions">
+        <button class="btn btn-primary" id="btn-go-login">Sign In</button>
+        <button class="btn btn-ghost" id="btn-go-register">Create Account</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================================
+       SCREEN: REGISTER
+  ============================================== -->
+  <div id="screen-register" class="screen">
+    <div class="auth-card">
+      <button class="back-link" id="btn-register-back">← Back</button>
+      <h2 class="auth-title">Join the Yearbook</h2>
+      <p class="auth-sub">Create your account to share and receive memories.</p>
+
+      <!-- Step 1: Fill details -->
+      <div id="register-step-1">
+        <div class="form-group">
+          <label for="reg-name">Full Name</label>
+          <input type="text" id="reg-name" placeholder="e.g. Priya Sharma" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="reg-username">Username</label>
+          <input type="text" id="reg-username" placeholder="e.g. priya_sharma" autocomplete="off" />
+          <span class="field-hint">Others will use this to send you memoirs.</span>
+        </div>
+        <div class="form-group">
+          <label for="reg-email">Email Address</label>
+          <input type="email" id="reg-email" placeholder="you@example.com" />
+        </div>
+        <div class="form-group">
+          <label for="reg-password">Password</label>
+          <input type="password" id="reg-password" placeholder="Min 6 characters" />
+        </div>
+        <div class="form-group">
+          <label for="reg-bio">Short Bio <span class="optional">(optional)</span></label>
+          <textarea id="reg-bio" placeholder="What will you be remembered for?"></textarea>
+        </div>
+        <div id="reg-error" class="form-error hidden"></div>
+        <button class="btn btn-primary full-width" id="btn-register-submit">Send OTP to Email</button>
+      </div>
+
+      <!-- Step 2: OTP verification -->
+      <div id="register-step-2" class="hidden">
+        <p class="otp-info">We sent a 6-digit code to <strong id="reg-otp-email-display"></strong>.</p>
+        <div class="form-group">
+          <label for="reg-otp">Enter OTP</label>
+          <input type="text" id="reg-otp" placeholder="_ _ _ _ _ _" maxlength="6" class="otp-input" autocomplete="off" />
+        </div>
+        <div id="reg-otp-error" class="form-error hidden"></div>
+        <button class="btn btn-primary full-width" id="btn-register-verify">Verify & Create Account</button>
+        <button class="btn btn-ghost full-width mt-8" id="btn-resend-reg-otp">Resend OTP</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================================
+       SCREEN: LOGIN
+  ============================================== -->
+  <div id="screen-login" class="screen">
+    <div class="auth-card">
+      <button class="back-link" id="btn-login-back">← Back</button>
+      <h2 class="auth-title">Welcome Back</h2>
+      <p class="auth-sub">Sign in to read your memories.</p>
+
+      <!-- Step 1: Credentials -->
+      <div id="login-step-1">
+        <div class="form-group">
+          <label for="login-username">Username</label>
+          <input type="text" id="login-username" placeholder="Your username" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" placeholder="Your password" />
+        </div>
+        <div id="login-error" class="form-error hidden"></div>
+        <button class="btn btn-primary full-width" id="btn-login-submit">Send OTP to Email</button>
+      </div>
+
+      <!-- Step 2: OTP -->
+      <div id="login-step-2" class="hidden">
+        <p class="otp-info">We sent a 6-digit code to <strong id="login-otp-email-display"></strong>.</p>
+        <div class="form-group">
+          <label for="login-otp">Enter OTP</label>
+          <input type="text" id="login-otp" placeholder="_ _ _ _ _ _" maxlength="6" class="otp-input" autocomplete="off" />
+        </div>
+        <div id="login-otp-error" class="form-error hidden"></div>
+        <button class="btn btn-primary full-width" id="btn-login-verify">Verify & Sign In</button>
+        <button class="btn btn-ghost full-width mt-8" id="btn-resend-login-otp">Resend OTP</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================================
+       SCREEN: DASHBOARD (logged in)
+  ============================================== -->
+  <div id="screen-dashboard" class="screen">
+
+    <!-- Top header bar -->
+    <header class="app-header">
+      <div class="app-header-inner">
+        <span class="header-logo">The Yearbook</span>
+        <div class="header-right">
+          <span class="header-user" id="header-username-display"></span>
+          <button class="btn btn-ghost btn-sm" id="btn-logout">Sign Out</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Tab navigation -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="memories" id="tab-memories-btn">
+        📖 Memories
+      </button>
+      <button class="tab-btn" data-tab="write" id="tab-write-btn">
+        ✍️ Write a Memoir
+      </button>
+    </nav>
+
+    <!-- TAB: MEMORIES -->
+    <div id="tab-memories" class="tab-content active">
+      <div class="tab-inner">
+        <div class="tab-heading">
+          <h2>Your Memory Wall</h2>
+          <p>Click a card to flip it and read the memoir.</p>
+        </div>
+        <!-- Flipcards are injected here by memoirs.js -->
+        <div id="memories-grid" class="memories-grid"></div>
+        <!-- Shown when no memoirs yet -->
+        <div id="memories-empty" class="empty-state hidden">
+          <div class="empty-icon">🕊️</div>
+          <p>No memoirs yet. Share your username so friends can write to you!</p>
+          <div class="username-badge" id="empty-username-display"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: WRITE A MEMOIR -->
+    <div id="tab-write" class="tab-content">
+      <div class="tab-inner">
+        <div class="tab-heading">
+          <h2>Write a Memoir</h2>
+          <p>Address it to a friend by their username.</p>
+        </div>
+        <div class="write-card">
+          <div class="form-group">
+            <label for="write-to-username">Recipient's Username</label>
+            <div class="input-with-check">
+              <input type="text" id="write-to-username" placeholder="e.g. priya_sharma" autocomplete="off" />
+              <span id="write-to-name-preview" class="name-preview"></span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="write-memoir-text">Your Memoir</label>
+            <textarea id="write-memoir-text" placeholder="Write something they'll remember forever…" rows="6"></textarea>
+            <span class="char-count" id="memoir-char-count">0 / 500</span>
+          </div>
+          <div id="write-error" class="form-error hidden"></div>
+          <div id="write-success" class="form-success hidden"></div>
+          <button class="btn btn-primary" id="btn-send-memoir">Send Memoir ✦</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /screen-dashboard -->
+
+  <!-- =============================================
+       TOAST NOTIFICATION
+  ============================================== -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- =============================================
+       SCRIPTS (order matters)
+  ============================================== -->
+  <script src="js/utils.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/memoirs.js"></script>
+  <script src="js/write.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
