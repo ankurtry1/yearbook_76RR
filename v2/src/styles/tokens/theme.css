@@ -1,0 +1,6 @@
+:root {
+  --cream: #f7f2e9; --warm-white: #fdfaf4; --parchment: #ede5d0; --gold: #c9a84c; --gold-light: #e8d090;
+  --gold-dark: #9e7d2f; --brown: #4a2f1a; --brown-mid: #7a4e2d; --brown-light: #a0714a; --ink: #221509;
+  --muted: #9a856e; --border: #d9ccb4; --green: #3a7a4a; --shadow-sm: 0 8px 24px rgba(34, 21, 9, 0.08);
+  --shadow-md: 0 12px 32px rgba(34, 21, 9, 0.12); --radius: 10px; --radius-lg: 22px; --ease: cubic-bezier(.4,0,.2,1);
+}
