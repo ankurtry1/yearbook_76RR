@@ -508,7 +508,7 @@ export default function App() {
         </div>
       ) : null}
 
-      {viewMode === 'write' && selectedWritePerson ? (
+      {viewMode === 'write' && selectedWritePerson && viewportMode !== 'mobile' ? (
         <div className="selection-banner">
           <span className="selection-badge">Writing for</span>
           <strong>{selectedWritePerson.fullName}</strong>

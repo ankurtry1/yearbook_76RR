@@ -51,12 +51,10 @@ export function MobileStoryDiscovery({
 
   const hasSearch = query.trim().length >= 2;
   const hasNoResults = hasSearch && filteredPeople.length === 0;
-  const spotlightPeople = filteredPeople.slice(0, Math.min(6, filteredPeople.length));
-  const collagePeople = filteredPeople.slice(Math.min(6, filteredPeople.length));
 
   function handleSelectPerson(personId: string) {
     onSelectPerson(personId);
-    setIsComposerOpen(false);
+    setIsComposerOpen(true);
   }
 
   function handlePickSomeone() {
@@ -76,21 +74,28 @@ export function MobileStoryDiscovery({
 
   return (
     <main className="screen-frame mobile-screen">
-      <section className="hero-copy compact">
-        <p className="eyebrow">Write mode</p>
-        <h1 className="screen-title">Find a face fast, then write when it feels right.</h1>
-        <input
-          className="search-input"
-          placeholder="Search by name or room"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
+      <section className="mobile-write-toolbar">
+        <div className="mobile-write-topline">
+          <p className="eyebrow">Write mode</p>
+          <p className="mobile-write-helper">Tap a face to write.</p>
+          {selectedPerson ? (
+            <span className="mobile-selected-chip">{selectedPerson.fullName}</span>
+          ) : null}
+        </div>
+        <div className="mobile-write-controls">
+          <input
+            className="search-input"
+            placeholder="Search by name or room"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </div>
         <div className="mobile-action-row">
           <button type="button" className="primary-btn" onClick={handlePickSomeone} disabled={!filteredPeople.length}>
-            Pick someone for me
+            Surprise me
           </button>
           <button type="button" className="ghost-chip" onClick={handleShuffle}>
-            Shuffle
+            Mix
           </button>
         </div>
         <p className="search-hint">
@@ -100,67 +105,28 @@ export function MobileStoryDiscovery({
               ? 'No matches found.'
               : hasSearch
                 ? `${filteredPeople.length} faces found`
-                : 'Tap a person to open their detail card'}
+                : `${people.length} faces ready`}
         </p>
-      </section>
-
-      <section className="story-strip story-strip-dense">
-        {spotlightPeople.map((person) => (
-          <button
-            key={person.id}
-            type="button"
-            className={selectedPersonId === person.id ? 'story-pill active' : 'story-pill'}
-            onClick={() => handleSelectPerson(person.id)}
-          >
-            <Avatar photoUrl={person.photoUrl} label={person.fullName} small />
-            <span>{person.fullName.split(' ')[0]}</span>
-          </button>
-        ))}
       </section>
 
       {hasNoResults ? (
         <p className="panel-note">No classmates match that search right now.</p>
       ) : (
         <section className="mobile-face-collage">
-          {collagePeople.map((person) => (
+          {filteredPeople.map((person) => (
             <button
               key={person.id}
               type="button"
               className={selectedPersonId === person.id ? 'mobile-face-card active' : 'mobile-face-card'}
               onClick={() => handleSelectPerson(person.id)}
+              title={`${person.fullName} · Room ${person.roomNo}`}
             >
               <Avatar photoUrl={person.photoUrl} label={person.fullName} small />
-              <span className="nickname">{person.fullName}</span>
-              <span className="fullname">Room {person.roomNo}</span>
+              <span className="nickname">{person.fullName.split(' ')[0]}</span>
             </button>
           ))}
         </section>
       )}
-
-      <AnimatePresence mode="wait">
-        {selectedPerson ? (
-          <motion.section
-            key={selectedPerson.id}
-            className="mobile-focus-card"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.25 }}
-          >
-            <div className="mobile-focus-header">
-              <Avatar photoUrl={selectedPerson.photoUrl} label={selectedPerson.fullName} small />
-              <div>
-                <p className="nickname">{selectedPerson.fullName}</p>
-                <p className="fullname">Room {selectedPerson.roomNo}</p>
-              </div>
-            </div>
-            <p className="mobile-focus-text">Ready to leave something thoughtful? Open the writing sheet when you are.</p>
-            <button type="button" className="primary-btn" onClick={() => setIsComposerOpen(true)}>
-              Write memoir
-            </button>
-          </motion.section>
-        ) : null}
-      </AnimatePresence>
 
       <AnimatePresence>
         {isComposerOpen && selectedPerson ? (
@@ -200,6 +166,7 @@ export function MobileStoryDiscovery({
                 onChange={(event) => onMessageChange(event.target.value)}
                 maxLength={10000}
               />
+              <p className="search-hint">What should they remember about this chapter of life?</p>
               <div className="sheet-actions">
                 <button type="button" className="ghost-chip" onClick={() => setIsComposerOpen(false)}>
                   Close
