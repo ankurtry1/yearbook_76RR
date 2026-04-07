@@ -11,9 +11,8 @@ export async function getCurrentUser(): Promise<User | null> {
   return data.session?.user ?? null;
 }
 
-export async function signInWithEmail(email: string): Promise<void> {
+export async function sendEmailOtp(email: string): Promise<void> {
   const normalizedEmail = email.trim().toLowerCase();
-  const emailRedirectTo = getEmailRedirectTo();
 
   if (!normalizedEmail) {
     throw new Error('Please enter your email address.');
@@ -21,11 +20,36 @@ export async function signInWithEmail(email: string): Promise<void> {
 
   const { error } = await supabase.auth.signInWithOtp({
     email: normalizedEmail,
-    options: emailRedirectTo ? { emailRedirectTo } : undefined,
+    options: {
+      shouldCreateUser: false,
+    },
   });
 
   if (error) {
-    throw new Error(`Could not send sign-in email. ${error.message}`);
+    throw new Error(`Could not send sign-in code. ${error.message}`);
+  }
+}
+
+export async function verifyEmailOtp(email: string, token: string): Promise<void> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedToken = token.trim();
+
+  if (!normalizedEmail) {
+    throw new Error('Please enter your email address.');
+  }
+
+  if (!normalizedToken) {
+    throw new Error('Please enter the one-time code from your email.');
+  }
+
+  const { error } = await supabase.auth.verifyOtp({
+    email: normalizedEmail,
+    token: normalizedToken,
+    type: 'email',
+  });
+
+  if (error) {
+    throw new Error(`Could not verify code. ${error.message}`);
   }
 }
 
@@ -43,9 +67,4 @@ export function subscribeToAuthChanges(callback: (session: Session | null) => vo
   });
 
   return data.subscription;
-}
-
-function getEmailRedirectTo(): string | undefined {
-  if (typeof window === 'undefined') return undefined;
-  return window.location.origin;
 }

@@ -53,8 +53,13 @@ export function MobileStoryDiscovery({
   const hasNoResults = hasSearch && filteredPeople.length === 0;
 
   function handleSelectPerson(personId: string) {
+    if (selectedPersonId === personId) {
+      setIsComposerOpen(true);
+      return;
+    }
+
     onSelectPerson(personId);
-    setIsComposerOpen(true);
+    setIsComposerOpen(false);
   }
 
   function handlePickSomeone() {
@@ -77,26 +82,28 @@ export function MobileStoryDiscovery({
       <section className="mobile-write-toolbar">
         <div className="mobile-write-topline">
           <p className="eyebrow">Write mode</p>
-          <p className="mobile-write-helper">Tap a face to write.</p>
+          <p className="mobile-write-helper">Choose a face, then write from the heart.</p>
           {selectedPerson ? (
-            <span className="mobile-selected-chip">{selectedPerson.fullName}</span>
+            <span className="mobile-selected-chip">For {selectedPerson.fullName.split(' ')[0]}</span>
           ) : null}
         </div>
-        <div className="mobile-write-controls">
-          <input
-            className="search-input"
-            placeholder="Search by name or room"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </div>
-        <div className="mobile-action-row">
-          <button type="button" className="primary-btn" onClick={handlePickSomeone} disabled={!filteredPeople.length}>
-            Surprise me
-          </button>
-          <button type="button" className="ghost-chip" onClick={handleShuffle}>
-            Mix
-          </button>
+        <div className="mobile-write-controls-row">
+          <div className="mobile-search-shell">
+            <input
+              className="search-input mobile-search-input"
+              placeholder="Find by name or room"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </div>
+          <div className="mobile-action-row">
+            <button type="button" className="primary-btn mobile-action-chip" onClick={handlePickSomeone} disabled={!filteredPeople.length}>
+              Surprise
+            </button>
+            <button type="button" className="ghost-chip mobile-action-chip" onClick={handleShuffle}>
+              Mix
+            </button>
+          </div>
         </div>
         <p className="search-hint">
           {query.length === 1
@@ -109,22 +116,59 @@ export function MobileStoryDiscovery({
         </p>
       </section>
 
+      {selectedPerson ? (
+        <motion.section
+          key={selectedPerson.id}
+          className="mobile-selected-stage"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
+        >
+          <div className="mobile-selected-stage-head">
+            <Avatar photoUrl={selectedPerson.photoUrl} label={selectedPerson.fullName} small />
+            <div>
+              <p className="nickname">{selectedPerson.fullName}</p>
+              <p className="fullname">Room {selectedPerson.roomNo}</p>
+            </div>
+          </div>
+          <p className="mobile-selected-stage-copy">
+            Capture one memory they should carry into the next chapter.
+          </p>
+          <button type="button" className="primary-btn mobile-write-cta" onClick={() => setIsComposerOpen(true)}>
+            Your memoir for {selectedPerson.fullName.split(' ')[0]}
+          </button>
+        </motion.section>
+      ) : null}
+
       {hasNoResults ? (
         <p className="panel-note">No classmates match that search right now.</p>
       ) : (
-        <section className="mobile-face-collage">
-          {filteredPeople.map((person) => (
+        <section className={selectedPersonId ? 'mobile-face-collage has-active' : 'mobile-face-collage'}>
+          {filteredPeople.map((person, index) => {
+            const style = getMobileTileStyle(person.id, index);
+            const className = [
+              'mobile-face-card',
+              `tone-${style.tone}`,
+              style.hasTape ? 'taped' : '',
+              style.hasFrame ? 'framed' : '',
+              selectedPersonId === person.id ? 'active' : '',
+            ]
+              .filter(Boolean)
+              .join(' ');
+
+            return (
             <button
               key={person.id}
               type="button"
-              className={selectedPersonId === person.id ? 'mobile-face-card active' : 'mobile-face-card'}
+              className={className}
               onClick={() => handleSelectPerson(person.id)}
               title={`${person.fullName} · Room ${person.roomNo}`}
             >
               <Avatar photoUrl={person.photoUrl} label={person.fullName} small />
               <span className="nickname">{person.fullName.split(' ')[0]}</span>
             </button>
-          ))}
+            );
+          })}
         </section>
       )}
 
@@ -160,7 +204,7 @@ export function MobileStoryDiscovery({
               />
               <p className="search-hint">Author is set from your signed-in profile.</p>
               <textarea
-                className="composer-input"
+                className="composer-input mobile-composer-input"
                 placeholder={`Write a memory for ${selectedPerson.fullName.split(' ')[0]}...`}
                 value={message}
                 onChange={(event) => onMessageChange(event.target.value)}
@@ -206,5 +250,18 @@ function seededRandom(seed: number): () => number {
     let t = Math.imul(state ^ (state >>> 15), 1 | state);
     t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function hashValue(value: string): number {
+  return value.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+}
+
+function getMobileTileStyle(personId: string, index: number): { tone: 1 | 2 | 3; hasTape: boolean; hasFrame: boolean } {
+  const hash = (hashValue(personId) + index * 13) % 17;
+  return {
+    tone: ((hash % 3) + 1) as 1 | 2 | 3,
+    hasTape: hash === 2 || hash === 9,
+    hasFrame: hash === 4 || hash === 12,
   };
 }

@@ -14,9 +14,10 @@ import {
 } from './lib/preview/devAdminPreview';
 import {
   getCurrentUser,
-  signInWithEmail,
+  sendEmailOtp,
   signOutUser,
   subscribeToAuthChanges,
+  verifyEmailOtp,
 } from './lib/supabase/auth';
 import {
   createMemory,
@@ -38,7 +39,8 @@ export default function App() {
   const [signedInEmail, setSignedInEmail] = useState('');
   const [viewerPerson, setViewerPerson] = useState<Person | null>(null);
   const [authError, setAuthError] = useState('');
-  const [isSendingLink, setIsSendingLink] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   const [authRequestMessage, setAuthRequestMessage] = useState('');
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -359,10 +361,10 @@ export default function App() {
     }
   }
 
-  async function handleSendSignInLink(email: string) {
+  async function handleSendOtpCode(email: string) {
     setAuthError('');
     setAuthRequestMessage('');
-    setIsSendingLink(true);
+    setIsSendingCode(true);
 
     try {
       if (isDevAdminPreviewCode(email)) {
@@ -370,12 +372,29 @@ export default function App() {
         return;
       }
 
-      await signInWithEmail(email);
-      setAuthRequestMessage('Check your email for the sign-in link or OTP code.');
+      await sendEmailOtp(email);
+      setAuthRequestMessage('We sent a 6-digit code to your email.');
     } catch (error) {
-      setAuthError(readErrorMessage(error, 'Could not send sign-in email.'));
+      setAuthError(readErrorMessage(error, 'Could not send sign-in code.'));
+      throw error;
     } finally {
-      setIsSendingLink(false);
+      setIsSendingCode(false);
+    }
+  }
+
+  async function handleVerifyOtpCode(email: string, token: string) {
+    setAuthError('');
+    setAuthRequestMessage('');
+    setIsVerifyingCode(true);
+
+    try {
+      await verifyEmailOtp(email, token);
+      setAuthRequestMessage('Code verified. Signing you in...');
+    } catch (error) {
+      setAuthError(readErrorMessage(error, 'Could not verify one-time code.'));
+      throw error;
+    } finally {
+      setIsVerifyingCode(false);
     }
   }
 
@@ -436,10 +455,16 @@ export default function App() {
   if (authStatus === 'signed_out') {
     return (
       <AuthScreen
-        isSending={isSendingLink}
+        isSendingCode={isSendingCode}
+        isVerifyingCode={isVerifyingCode}
         errorMessage={authError}
         successMessage={authRequestMessage}
-        onSendLink={handleSendSignInLink}
+        onSendCode={handleSendOtpCode}
+        onVerifyCode={handleVerifyOtpCode}
+        onClearFeedback={() => {
+          setAuthError('');
+          setAuthRequestMessage('');
+        }}
         showDevPreviewHint={import.meta.env.DEV}
       />
     );
@@ -471,34 +496,73 @@ export default function App() {
           <span className="brand-script">The Yearbook</span>
           <span className="brand-sub">Private memories for your class</span>
         </div>
-        <div className="topbar-actions">
-          <div className="signed-in-chip">
-            <span className="signed-in-name">{isAdminPreview ? 'Admin Preview' : viewerPerson?.fullName}</span>
-            <span className="signed-in-meta">
-              {isAdminPreview ? 'Local mode' : `Room ${viewerPerson?.roomNo ?? '-'}`}
-            </span>
-            <span className="signed-in-meta">{signedInEmail}</span>
+        {viewportMode === 'mobile' ? (
+          <div className="topbar-actions topbar-actions-mobile">
+            <nav className="mode-switch mode-switch-mobile">
+              <button
+                type="button"
+                aria-label="Write mode"
+                title="Write mode"
+                className={viewMode === 'write' ? 'mode-btn active' : 'mode-btn'}
+                onClick={() => setViewMode('write')}
+              >
+                W
+              </button>
+              <button
+                type="button"
+                aria-label="Read mode"
+                title="Read mode"
+                className={viewMode === 'read' ? 'mode-btn active' : 'mode-btn'}
+                onClick={() => setViewMode('read')}
+              >
+                R
+              </button>
+            </nav>
+
+            <details className="account-menu">
+              <summary className="account-pill" aria-label="Account menu">
+                {(isAdminPreview ? 'A' : (viewerPerson?.fullName?.slice(0, 1) ?? 'Y')).toUpperCase()}
+              </summary>
+              <div className="account-popover">
+                <p className="account-name">{isAdminPreview ? 'Admin Preview' : viewerPerson?.fullName}</p>
+                <p className="account-meta">{isAdminPreview ? 'Local mode' : `Room ${viewerPerson?.roomNo ?? '-'}`}</p>
+                <p className="account-meta">{signedInEmail}</p>
+                <button type="button" className="ghost-chip account-signout" onClick={handleSignOut} disabled={isSigningOut}>
+                  {isSigningOut ? 'Signing out...' : isAdminPreview ? 'Exit preview' : 'Sign out'}
+                </button>
+              </div>
+            </details>
           </div>
-          <nav className="mode-switch">
-            <button
-              type="button"
-              className={viewMode === 'write' ? 'mode-btn active' : 'mode-btn'}
-              onClick={() => setViewMode('write')}
-            >
-              Write
+        ) : (
+          <div className="topbar-actions">
+            <div className="signed-in-chip">
+              <span className="signed-in-name">{isAdminPreview ? 'Admin Preview' : viewerPerson?.fullName}</span>
+              <span className="signed-in-meta">
+                {isAdminPreview ? 'Local mode' : `Room ${viewerPerson?.roomNo ?? '-'}`}
+              </span>
+              <span className="signed-in-meta">{signedInEmail}</span>
+            </div>
+            <nav className="mode-switch">
+              <button
+                type="button"
+                className={viewMode === 'write' ? 'mode-btn active' : 'mode-btn'}
+                onClick={() => setViewMode('write')}
+              >
+                Write
+              </button>
+              <button
+                type="button"
+                className={viewMode === 'read' ? 'mode-btn active' : 'mode-btn'}
+                onClick={() => setViewMode('read')}
+              >
+                Read
+              </button>
+            </nav>
+            <button type="button" className="ghost-chip" onClick={handleSignOut} disabled={isSigningOut}>
+              {isSigningOut ? 'Signing out...' : isAdminPreview ? 'Exit preview' : 'Sign out'}
             </button>
-            <button
-              type="button"
-              className={viewMode === 'read' ? 'mode-btn active' : 'mode-btn'}
-              onClick={() => setViewMode('read')}
-            >
-              Read
-            </button>
-          </nav>
-          <button type="button" className="ghost-chip" onClick={handleSignOut} disabled={isSigningOut}>
-            {isSigningOut ? 'Signing out...' : isAdminPreview ? 'Exit preview' : 'Sign out'}
-          </button>
-        </div>
+          </div>
+        )}
       </header>
 
       {isAdminPreview ? (
