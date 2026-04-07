@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# dependencies
+node_modules/
+
+# local env files
+.env.local
+v2/.env.local
+
+# local Supabase temp artifacts
+v2/supabase/.temp/
