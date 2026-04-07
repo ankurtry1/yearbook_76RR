@@ -13,6 +13,7 @@ export async function getCurrentUser(): Promise<User | null> {
 
 export async function signInWithEmail(email: string): Promise<void> {
   const normalizedEmail = email.trim().toLowerCase();
+  const emailRedirectTo = getEmailRedirectTo();
 
   if (!normalizedEmail) {
     throw new Error('Please enter your email address.');
@@ -20,6 +21,7 @@ export async function signInWithEmail(email: string): Promise<void> {
 
   const { error } = await supabase.auth.signInWithOtp({
     email: normalizedEmail,
+    options: emailRedirectTo ? { emailRedirectTo } : undefined,
   });
 
   if (error) {
@@ -41,4 +43,9 @@ export function subscribeToAuthChanges(callback: (session: Session | null) => vo
   });
 
   return data.subscription;
+}
+
+function getEmailRedirectTo(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  return window.location.origin;
 }

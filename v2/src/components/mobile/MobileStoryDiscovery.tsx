@@ -30,52 +30,82 @@ export function MobileStoryDiscovery({
 }: Props) {
   const [query, setQuery] = useState('');
   const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const [shuffleSeed, setShuffleSeed] = useState(() => Date.now());
 
-  const selectedPerson = people.find((person) => person.id === selectedPersonId) ?? null;
+  const orderedPeople = useMemo(() => {
+    return shuffleBySeed(people, shuffleSeed);
+  }, [people, shuffleSeed]);
+
+  const selectedPerson = orderedPeople.find((person) => person.id === selectedPersonId) ?? null;
 
   const filteredPeople = useMemo(() => {
-    if (query.trim().length < 2) return people;
+    if (query.trim().length < 2) return orderedPeople;
     const normalized = query.toLowerCase();
-    return people.filter((person) => {
+    return orderedPeople.filter((person) => {
       return (
         person.fullName.toLowerCase().includes(normalized) ||
         person.roomNo.toLowerCase().includes(normalized)
       );
     });
-  }, [people, query]);
+  }, [orderedPeople, query]);
 
   const hasSearch = query.trim().length >= 2;
   const hasNoResults = hasSearch && filteredPeople.length === 0;
+  const spotlightPeople = filteredPeople.slice(0, Math.min(6, filteredPeople.length));
+  const collagePeople = filteredPeople.slice(Math.min(6, filteredPeople.length));
 
   function handleSelectPerson(personId: string) {
     onSelectPerson(personId);
     setIsComposerOpen(false);
   }
 
+  function handlePickSomeone() {
+    if (!filteredPeople.length) return;
+    const eligiblePeople =
+      selectedPersonId && filteredPeople.length > 1
+        ? filteredPeople.filter((person) => person.id !== selectedPersonId)
+        : filteredPeople;
+    const randomPick = eligiblePeople[Math.floor(Math.random() * eligiblePeople.length)];
+    if (!randomPick) return;
+    handleSelectPerson(randomPick.id);
+  }
+
+  function handleShuffle() {
+    setShuffleSeed(Date.now() + Math.floor(Math.random() * 1000));
+  }
+
   return (
     <main className="screen-frame mobile-screen">
       <section className="hero-copy compact">
         <p className="eyebrow">Write mode</p>
-        <h1 className="screen-title">Find a classmate, preview their card, then choose when to write.</h1>
+        <h1 className="screen-title">Find a face fast, then write when it feels right.</h1>
         <input
           className="search-input"
           placeholder="Search by name or room"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
+        <div className="mobile-action-row">
+          <button type="button" className="primary-btn" onClick={handlePickSomeone} disabled={!filteredPeople.length}>
+            Pick someone for me
+          </button>
+          <button type="button" className="ghost-chip" onClick={handleShuffle}>
+            Shuffle
+          </button>
+        </div>
         <p className="search-hint">
           {query.length === 1
             ? 'Type one more character to filter.'
             : hasNoResults
               ? 'No matches found.'
               : hasSearch
-                ? `${filteredPeople.length} people found`
+                ? `${filteredPeople.length} faces found`
                 : 'Tap a person to open their detail card'}
         </p>
       </section>
 
-      <section className="story-strip">
-        {filteredPeople.map((person) => (
+      <section className="story-strip story-strip-dense">
+        {spotlightPeople.map((person) => (
           <button
             key={person.id}
             type="button"
@@ -91,15 +121,15 @@ export function MobileStoryDiscovery({
       {hasNoResults ? (
         <p className="panel-note">No classmates match that search right now.</p>
       ) : (
-        <section className="story-grid">
-          {filteredPeople.map((person) => (
+        <section className="mobile-face-collage">
+          {collagePeople.map((person) => (
             <button
               key={person.id}
               type="button"
-              className={selectedPersonId === person.id ? 'story-card active' : 'story-card'}
+              className={selectedPersonId === person.id ? 'mobile-face-card active' : 'mobile-face-card'}
               onClick={() => handleSelectPerson(person.id)}
             >
-              <Avatar photoUrl={person.photoUrl} label={person.fullName} />
+              <Avatar photoUrl={person.photoUrl} label={person.fullName} small />
               <span className="nickname">{person.fullName}</span>
               <span className="fullname">Room {person.roomNo}</span>
             </button>
@@ -165,7 +195,7 @@ export function MobileStoryDiscovery({
               <p className="search-hint">Author is set from your signed-in profile.</p>
               <textarea
                 className="composer-input"
-                placeholder="Write the memoir here..."
+                placeholder={`Write a memory for ${selectedPerson.fullName.split(' ')[0]}...`}
                 value={message}
                 onChange={(event) => onMessageChange(event.target.value)}
                 maxLength={10000}
@@ -186,4 +216,28 @@ export function MobileStoryDiscovery({
       </AnimatePresence>
     </main>
   );
+}
+
+function shuffleBySeed(people: Person[], seed: number): Person[] {
+  if (people.length <= 1) return people;
+
+  const next = [...people];
+  const random = seededRandom(seed);
+
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(random() * (index + 1));
+    [next[index], next[randomIndex]] = [next[randomIndex], next[index]];
+  }
+
+  return next;
+}
+
+function seededRandom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
