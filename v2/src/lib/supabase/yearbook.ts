@@ -64,17 +64,15 @@ export async function isRosterEmailAllowed(email: string): Promise<boolean> {
     return false;
   }
 
-  const { data, error } = await supabase
-    .from('people')
-    .select('id')
-    .eq('allowed_email', normalized)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc('check_roster_email', {
+    input_email: normalized,
+  });
 
   if (error) {
-    throw new Error(formatSupabaseError(error.message, 'check roster eligibility', 'people'));
+    throw new Error(formatSupabaseError(error.message, 'check roster eligibility', 'check_roster_email'));
   }
 
-  return !!data;
+  return data === true;
 }
 
 export async function resolvePersonFromProfile(userId: string): Promise<Person | null> {
