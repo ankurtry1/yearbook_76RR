@@ -78,6 +78,9 @@
 .otp-input{letter-spacing:.18em;text-align:center;font-weight:700}
 .auth-secondary-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .auth-inline-link{padding:7px 12px;border-radius:10px}
+.auth-email-status{margin-top:8px}
+.auth-email-status-checking{color:var(--muted)}
+.auth-email-status-allowed{display:inline-flex;align-items:center;gap:4px}
 .auth-dev-hint{margin:12px 0 0;color:var(--brown-mid);font-size:13px}
 
 @media (max-width:1023px){

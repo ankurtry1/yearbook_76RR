@@ -24,6 +24,7 @@ import {
   createMemory,
   fetchMemoriesByRecipient,
   fetchPeople,
+  isRosterEmailAllowed,
 } from './lib/supabase/yearbook';
 import type { Memory, Person, SortMode, ViewMode } from './lib/utils/types';
 
@@ -368,6 +369,11 @@ export default function App() {
         return;
       }
 
+      const isAllowed = await isRosterEmailAllowed(email);
+      if (!isAllowed) {
+        throw new Error('This email is not on the roster.');
+      }
+
       await sendEmailOtp(email);
       setAuthRequestMessage('We sent a code to your email.');
     } catch (error) {
@@ -392,6 +398,10 @@ export default function App() {
     } finally {
       setIsVerifyingCode(false);
     }
+  }
+
+  async function handleCheckRosterEmail(email: string): Promise<boolean> {
+    return isRosterEmailAllowed(email);
   }
 
   async function handleSignOut() {
@@ -456,6 +466,7 @@ export default function App() {
         errorMessage={authError}
         successMessage={authRequestMessage}
         onSendCode={handleSendOtpCode}
+        onCheckEmail={handleCheckRosterEmail}
         onVerifyCode={handleVerifyOtpCode}
         onClearFeedback={() => {
           setAuthError('');

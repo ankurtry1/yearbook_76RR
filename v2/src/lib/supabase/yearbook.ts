@@ -57,6 +57,26 @@ export async function resolvePersonByAllowedEmail(email: string): Promise<Person
   return mapPersonRow(data);
 }
 
+export async function isRosterEmailAllowed(email: string): Promise<boolean> {
+  const normalized = email.trim().toLowerCase();
+
+  if (!isLikelyEmail(normalized)) {
+    return false;
+  }
+
+  const { data, error } = await supabase
+    .from('people')
+    .select('id')
+    .ilike('allowed_email', normalized)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(formatSupabaseError(error.message, 'check roster eligibility', 'people'));
+  }
+
+  return !!data;
+}
+
 export async function resolvePersonFromProfile(userId: string): Promise<Person | null> {
   if (!userId.trim()) return null;
 
@@ -190,4 +210,8 @@ function formatSupabaseError(rawMessage: string, action: string, tableName: stri
   }
 
   return `Could not ${action}. ${rawMessage}`;
+}
+
+function isLikelyEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }

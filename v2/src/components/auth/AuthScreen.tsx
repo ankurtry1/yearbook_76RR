@@ -1,8 +1,11 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
 const OTP_MIN_LENGTH = 6;
 const OTP_MAX_LENGTH = 8;
+const EMAIL_CHECK_DEBOUNCE_MS = 300;
+
+type EmailStatus = 'idle' | 'checking' | 'allowed' | 'blocked';
 
 type Props = {
   isSendingCode: boolean;
@@ -10,6 +13,7 @@ type Props = {
   errorMessage: string;
   successMessage: string;
   onSendCode: (email: string) => Promise<void>;
+  onCheckEmail: (email: string) => Promise<boolean>;
   onVerifyCode: (email: string, token: string) => Promise<void>;
   onClearFeedback: () => void;
   showDevPreviewHint?: boolean;
@@ -21,6 +25,7 @@ export function AuthScreen({
   errorMessage,
   successMessage,
   onSendCode,
+  onCheckEmail,
   onVerifyCode,
   onClearFeedback,
   showDevPreviewHint = false,
@@ -29,11 +34,66 @@ export function AuthScreen({
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [localError, setLocalError] = useState('');
+  const [emailStatus, setEmailStatus] = useState<EmailStatus>('idle');
+  const [emailStatusMessage, setEmailStatusMessage] = useState('');
+
+  const checkIdRef = useRef(0);
+  const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
+  const isDevPreviewEmail = showDevPreviewHint && normalizedEmail === 'admin123';
+  const canSendCode = isDevPreviewEmail || emailStatus === 'allowed';
+
+  useEffect(() => {
+    if (authStep !== 'email') return;
+
+    if (!normalizedEmail) {
+      setEmailStatus('idle');
+      setEmailStatusMessage('');
+      return;
+    }
+
+    if (isDevPreviewEmail) {
+      setEmailStatus('allowed');
+      setEmailStatusMessage('Local preview mode');
+      return;
+    }
+
+    if (!isLikelyEmail(normalizedEmail)) {
+      setEmailStatus('idle');
+      setEmailStatusMessage('');
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      const currentCheckId = checkIdRef.current + 1;
+      checkIdRef.current = currentCheckId;
+      setEmailStatus('checking');
+      setEmailStatusMessage('Checking roster...');
+
+      void onCheckEmail(normalizedEmail)
+        .then((isAllowed) => {
+          if (checkIdRef.current !== currentCheckId) return;
+
+          if (isAllowed) {
+            setEmailStatus('allowed');
+            setEmailStatusMessage('Allowed to sign in');
+            return;
+          }
+
+          setEmailStatus('blocked');
+          setEmailStatusMessage('This email is not on the roster');
+        })
+        .catch(() => {
+          if (checkIdRef.current !== currentCheckId) return;
+          setEmailStatus('blocked');
+          setEmailStatusMessage('Could not verify this email right now');
+        });
+    }, EMAIL_CHECK_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [authStep, isDevPreviewEmail, normalizedEmail, onCheckEmail]);
 
   async function handleEmailSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const normalizedEmail = email.trim().toLowerCase();
-    const isDevPreviewEmail = showDevPreviewHint && normalizedEmail === 'admin123';
 
     if (!isDevPreviewEmail && !isLikelyEmail(normalizedEmail)) {
       setLocalError('Please enter a valid email address.');
@@ -41,11 +101,15 @@ export function AuthScreen({
       return;
     }
 
+    if (!canSendCode) {
+      setLocalError('This email is not eligible for sign-in.');
+      return;
+    }
+
     setLocalError('');
     try {
       await onSendCode(normalizedEmail);
       if (!isDevPreviewEmail) {
-        setEmail(normalizedEmail);
         setAuthStep('otp');
       }
     } catch {
@@ -71,7 +135,7 @@ export function AuthScreen({
   async function handleResendCode() {
     setLocalError('');
     try {
-      await onSendCode(email);
+      await onSendCode(normalizedEmail);
     } catch {
       // App-level error state already renders the message.
     }
@@ -81,6 +145,8 @@ export function AuthScreen({
     setAuthStep('email');
     setOtp('');
     setLocalError('');
+    setEmailStatus('idle');
+    setEmailStatusMessage('');
     onClearFeedback();
   }
 
@@ -110,7 +176,7 @@ export function AuthScreen({
         {authStep === 'email' ? (
           <>
             <p className="screen-subtitle">
-              Enter your class email and we will send a one-time code.
+              Enter your roster email to continue. We&apos;ll send a one-time code once it is verified.
             </p>
 
             <form className="auth-form" onSubmit={handleEmailSubmit} noValidate>
@@ -129,10 +195,29 @@ export function AuthScreen({
                 value={email}
                 onChange={(event) => handleEmailChange(event.target.value)}
               />
-              <button type="submit" className="primary-btn auth-submit" disabled={isSendingCode}>
+              <button
+                type="submit"
+                className="primary-btn auth-submit"
+                disabled={isSendingCode || emailStatus === 'checking' || !canSendCode}
+              >
                 {isSendingCode ? 'Sending...' : 'Email me a code'}
               </button>
             </form>
+
+            {emailStatus !== 'idle' ? (
+              <p
+                className={
+                  emailStatus === 'allowed'
+                    ? 'form-feedback form-feedback-success auth-email-status auth-email-status-allowed'
+                    : emailStatus === 'checking'
+                      ? 'form-feedback auth-email-status auth-email-status-checking'
+                      : 'form-feedback form-feedback-error auth-email-status'
+                }
+              >
+                {emailStatus === 'allowed' ? '✓ ' : ''}
+                {emailStatusMessage}
+              </p>
+            ) : null}
           </>
         ) : (
           <>
