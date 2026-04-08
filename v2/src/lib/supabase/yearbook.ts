@@ -46,7 +46,7 @@ export async function resolvePersonByAllowedEmail(email: string): Promise<Person
   const { data, error } = await supabase
     .from('people')
     .select('id, room_no, full_name, photo_url, allowed_email')
-    .ilike('allowed_email', normalized)
+    .eq('allowed_email', normalized)
     .maybeSingle();
 
   if (error) {
@@ -67,7 +67,7 @@ export async function isRosterEmailAllowed(email: string): Promise<boolean> {
   const { data, error } = await supabase
     .from('people')
     .select('id')
-    .ilike('allowed_email', normalized)
+    .eq('allowed_email', normalized)
     .maybeSingle();
 
   if (error) {
