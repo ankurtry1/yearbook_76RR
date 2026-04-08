@@ -9,6 +9,13 @@ type PersonRow = {
   allowed_email?: string | null;
 };
 
+type ProfilePersonLinkRow = {
+  id: string;
+  person_id: string;
+  email: string;
+  people: PersonRow | PersonRow[] | null;
+};
+
 type MemoryRow = {
   id: string;
   recipient_id: string;
@@ -48,6 +55,28 @@ export async function resolvePersonByAllowedEmail(email: string): Promise<Person
 
   if (!data) return null;
   return mapPersonRow(data);
+}
+
+export async function resolvePersonFromProfile(userId: string): Promise<Person | null> {
+  if (!userId.trim()) return null;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, person_id, email, people:person_id(id, room_no, full_name, photo_url, allowed_email)')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(formatSupabaseError(error.message, 'load profile', 'profiles'));
+  }
+
+  if (!data) return null;
+
+  const profile = data as ProfilePersonLinkRow;
+  const personRow = Array.isArray(profile.people) ? profile.people[0] ?? null : profile.people;
+
+  if (!personRow) return null;
+  return mapPersonRow(personRow);
 }
 
 export async function fetchMemoriesByRecipient(recipientId: string): Promise<Memory[]> {
@@ -96,6 +125,37 @@ export async function ensureProfileForUser(input: EnsureProfileInput): Promise<v
   if (error) {
     throw new Error(formatSupabaseError(error.message, 'sync profile', 'profiles'));
   }
+}
+
+type BootstrapProfileInput = {
+  userId: string;
+  email: string;
+};
+
+export async function bootstrapProfilePersonForAuthUser(input: BootstrapProfileInput): Promise<Person | null> {
+  const normalizedEmail = input.email.trim().toLowerCase();
+
+  if (!normalizedEmail) {
+    throw new Error('Signed-in user has no email address.');
+  }
+
+  const existingProfilePerson = await resolvePersonFromProfile(input.userId);
+  if (existingProfilePerson) {
+    return existingProfilePerson;
+  }
+
+  const matchedPerson = await resolvePersonByAllowedEmail(normalizedEmail);
+  if (!matchedPerson) {
+    return null;
+  }
+
+  await ensureProfileForUser({
+    userId: input.userId,
+    personId: matchedPerson.id,
+    email: normalizedEmail,
+  });
+
+  return matchedPerson;
 }
 
 function mapPersonRow(row: PersonRow): Person {

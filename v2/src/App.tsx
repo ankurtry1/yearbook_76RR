@@ -20,11 +20,10 @@ import {
   verifyEmailOtp,
 } from './lib/supabase/auth';
 import {
+  bootstrapProfilePersonForAuthUser,
   createMemory,
-  ensureProfileForUser,
   fetchMemoriesByRecipient,
   fetchPeople,
-  resolvePersonByAllowedEmail,
 } from './lib/supabase/yearbook';
 import type { Memory, Person, SortMode, ViewMode } from './lib/utils/types';
 
@@ -212,7 +211,10 @@ export default function App() {
     }
 
     try {
-      const person = await resolvePersonByAllowedEmail(normalizedEmail);
+      const person = await bootstrapProfilePersonForAuthUser({
+        userId,
+        email: normalizedEmail,
+      });
 
       if (!person) {
         setViewerPerson(null);
@@ -221,12 +223,6 @@ export default function App() {
         resetAppData();
         return;
       }
-
-      await ensureProfileForUser({
-        userId,
-        personId: person.id,
-        email: normalizedEmail,
-      });
 
       setViewerPerson(person);
       setAuthStatus('signed_in');
