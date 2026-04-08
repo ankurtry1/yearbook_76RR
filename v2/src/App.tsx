@@ -373,7 +373,7 @@ export default function App() {
       }
 
       await sendEmailOtp(email);
-      setAuthRequestMessage('We sent a 6-digit code to your email.');
+      setAuthRequestMessage('We sent a code to your email.');
     } catch (error) {
       setAuthError(readErrorMessage(error, 'Could not send sign-in code.'));
       throw error;

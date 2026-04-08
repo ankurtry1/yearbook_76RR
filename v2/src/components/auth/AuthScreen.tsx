@@ -1,6 +1,9 @@
 import { FormEvent, useState } from 'react';
 import { motion } from 'framer-motion';
 
+const OTP_MIN_LENGTH = 6;
+const OTP_MAX_LENGTH = 8;
+
 type Props = {
   isSendingCode: boolean;
   isVerifyingCode: boolean;
@@ -52,8 +55,8 @@ export function AuthScreen({
 
   async function handleOtpSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (otp.length < 6) {
-      setLocalError('Please enter the 6-digit code.');
+    if (otp.length < OTP_MIN_LENGTH || otp.length > OTP_MAX_LENGTH) {
+      setLocalError('Please enter the code from your email.');
       return;
     }
 
@@ -82,7 +85,7 @@ export function AuthScreen({
   }
 
   function handleOtpChange(nextValue: string) {
-    const digitsOnly = nextValue.replace(/\D/g, '').slice(0, 6);
+    const digitsOnly = nextValue.replace(/\D/g, '').slice(0, OTP_MAX_LENGTH);
     setOtp(digitsOnly);
     setLocalError('');
     onClearFeedback();
@@ -134,7 +137,7 @@ export function AuthScreen({
         ) : (
           <>
             <p className="screen-subtitle">
-              We sent a 6-digit code to <strong>{email}</strong>.
+              We sent a code to <strong>{email}</strong>.
             </p>
 
             <form className="auth-form" onSubmit={handleOtpSubmit} noValidate>
@@ -147,16 +150,16 @@ export function AuthScreen({
                 type="text"
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                placeholder="123456"
+                placeholder="Enter your code"
                 value={otp}
                 onChange={(event) => handleOtpChange(event.target.value)}
-                maxLength={6}
+                maxLength={OTP_MAX_LENGTH}
                 autoFocus
               />
               <button
                 type="submit"
                 className="primary-btn auth-submit"
-                disabled={isVerifyingCode || otp.length < 6}
+                disabled={isVerifyingCode || otp.length < OTP_MIN_LENGTH}
               >
                 {isVerifyingCode ? 'Verifying...' : 'Verify and continue'}
               </button>
